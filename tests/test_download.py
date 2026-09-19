@@ -108,8 +108,46 @@ class DownloadSkillTests(unittest.TestCase):
     @patch.object(download, "require_tool", return_value="/tmp/yt-dlp")
     def test_doctor_reports_current_version(self, *_mocks) -> None:
         result = download.doctor(False, 30)
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["missing_dependencies"], [])
         self.assertFalse(result["yt_dlp"]["outdated"])
         self.assertFalse(result["yt_dlp"]["upgraded"])
+
+    @patch.object(download, "optional_tool_version", return_value="available")
+    @patch.object(download, "require_tool", side_effect=download.SkillError("dependency", "missing"))
+    @patch.object(download, "latest_ytdlp_version")
+    def test_doctor_reports_missing_ytdlp_without_update_check(self, latest, *_mocks) -> None:
+        result = download.doctor(False, 30)
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["ready"])
+        self.assertEqual(result["missing_dependencies"], ["yt-dlp"])
+        self.assertIn("yt-dlp", result["next_action"])
+        self.assertFalse(result["yt_dlp"]["installed"])
+        latest.assert_not_called()
+
+    @patch.object(download, "optional_tool_version", side_effect=lambda name: None if name == "ffmpeg" else "available")
+    @patch.object(download, "detect_ytdlp_manager", return_value=("self-update", ["yt-dlp", "-U"]))
+    @patch.object(download, "latest_ytdlp_version", return_value="2026.09.18")
+    @patch.object(download, "executable_version", return_value="2026.09.18")
+    @patch.object(download, "require_tool", return_value="/tmp/yt-dlp")
+    def test_doctor_is_not_ready_when_ffmpeg_is_missing(self, *_mocks) -> None:
+        result = download.doctor(False, 30)
+        self.assertFalse(result["ok"])
+        self.assertFalse(result["ready"])
+        self.assertEqual(result["missing_dependencies"], ["ffmpeg"])
+        self.assertIn("ffmpeg", result["next_action"])
+
+    @patch.object(download, "optional_tool_version", return_value="available")
+    @patch.object(download, "detect_ytdlp_manager", return_value=("self-update", ["yt-dlp", "-U"]))
+    @patch.object(download, "latest_ytdlp_version", side_effect=download.SkillError("update-check", "offline"))
+    @patch.object(download, "executable_version", return_value="2026.09.18")
+    @patch.object(download, "require_tool", return_value="/tmp/yt-dlp")
+    def test_doctor_keeps_local_readiness_when_update_check_is_offline(self, *_mocks) -> None:
+        result = download.doctor(False, 30)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["ready"])
+        self.assertIsNone(result["yt_dlp"]["latest_stable_version"])
+        self.assertTrue(result["warnings"])
 
     def test_cli_help_has_required_commands(self) -> None:
         parser = download.build_parser()

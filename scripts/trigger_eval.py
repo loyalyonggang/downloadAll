@@ -10,11 +10,14 @@ URL_RE = re.compile(r"https://[^\s<>\]\[)]+", re.I)
 PLATFORMS = ("youtube", "youtu.be", "bilibili", "b站", "b23.tv", "x.com", "twitter", "vimeo", "tiktok", "douyin", "抖音", "xiaohongshu", "小红书", "instagram", "facebook", "twitch", "reddit", "weibo", "微博", "acfun", "视频", "video")
 ACTIONS = ("下载", "保存", "存下来", "mp3", "音频", "字幕", "download", "save this", "update yt-dlp")
 NEGATIVE = ("上传", "剪辑", "总结", "分析", "电子书", "pdf", "图片", "image", "网页")
-DESCRIPTION_TERMS = ("https url", "youtube", "bilibili", "x/twitter", "douyin", "tiktok", "xiaohongshu", "yt-dlp", "下载这个", "mp3", "字幕", "微信视频号")
+SELF_CHECK = ("检查 downloadall", "downloadall 是否准备", "下载环境是否准备", "downloadall 安装状态")
+DESCRIPTION_TERMS = ("https url", "youtube", "bilibili", "x/twitter", "douyin", "tiktok", "xiaohongshu", "yt-dlp", "下载这个", "mp3", "字幕", "微信视频号", "检查 downloadall")
 
 
 def predicts(text: str) -> bool:
     value = text.lower()
+    if any(term in value for term in SELF_CHECK):
+        return True
     has_target = bool(URL_RE.search(value)) or any(x in value for x in PLATFORMS)
     return has_target and any(x in value for x in ACTIONS) and not any(x in value for x in NEGATIVE)
 

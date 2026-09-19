@@ -30,7 +30,8 @@ def main() -> None:
         if term not in skill:
             failures.append(f"SKILL.md missing contract: {term}")
     for term in ("--no-playlist", "--no-overwrites", "--cookies-from-browser", "ffprobe",
-                 "YT_DLP_RELEASE_API", "doctor", "download_lock", "normalize_url"):
+                 "YT_DLP_RELEASE_API", "doctor", "download_lock", "normalize_url",
+                 "missing_dependencies", "ready"):
         if term not in script:
             failures.append(f"download.py missing safety term: {term}")
     if re.search(r"(?:API_KEY|TOKEN|COOKIE)\s*=\s*['\"][^'\"]+['\"]", script):

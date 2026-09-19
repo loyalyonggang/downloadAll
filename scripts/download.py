@@ -303,32 +303,85 @@ def optional_tool_version(name: str) -> str | None:
     return lines[0].strip() if lines else None
 
 
+def dependency_install_guidance(missing: list[str]) -> str:
+    names = "、".join(missing)
+    if sys.platform == "darwin":
+        packages = []
+        if "yt-dlp" in missing:
+            packages.append("yt-dlp")
+        if "ffmpeg" in missing or "ffprobe" in missing:
+            packages.append("ffmpeg")
+        command = f"brew install {' '.join(packages)}"
+        if shutil.which("brew"):
+            return f"缺少 {names}；请在终端运行：{command}"
+        return f"缺少 {names}；请先安装 Homebrew，再在终端运行：{command}"
+    if sys.platform.startswith("linux"):
+        commands = []
+        if "ffmpeg" in missing or "ffprobe" in missing:
+            commands.append("sudo apt update && sudo apt install ffmpeg")
+        if "yt-dlp" in missing:
+            commands.append("python3 -m pip install --user --upgrade yt-dlp")
+        return f"缺少 {names}；Ubuntu/Debian 可运行：{'；'.join(commands)}"
+    if os.name == "nt":
+        return f"缺少 {names}；Windows 尚未完成本项目验证，请按 yt-dlp 与 FFmpeg 官方说明安装后重试。"
+    return f"缺少 {names}；请使用当前系统的软件包管理器安装后重试。"
+
+
 def doctor(upgrade: bool, timeout: int) -> dict[str, Any]:
-    yt_dlp = require_tool("yt-dlp")
-    installed = executable_version(yt_dlp)
-    latest = latest_ytdlp_version(min(timeout, 60))
-    manager, command = detect_ytdlp_manager(yt_dlp)
-    outdated = version_key(installed) < version_key(latest)
+    ffmpeg_version = optional_tool_version("ffmpeg")
+    ffprobe_version = optional_tool_version("ffprobe")
+    missing = [name for name, value in (
+        ("ffmpeg", ffmpeg_version), ("ffprobe", ffprobe_version)
+    ) if value is None]
+    warnings: list[str] = []
+    try:
+        yt_dlp = require_tool("yt-dlp")
+    except SkillError:
+        yt_dlp = None
+        missing.insert(0, "yt-dlp")
+
+    installed = executable_version(yt_dlp) if yt_dlp else None
+    latest = None
+    manager = None
+    command: list[str] = []
+    outdated: bool | None = None
     upgraded = False
-    if upgrade and outdated:
-        previous = installed
-        env = dict(os.environ)
-        if manager == "homebrew":
-            env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
-        result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=timeout, env=env)
-        if result.returncode != 0:
-            raise SkillError("upgrade", error_summary(result))
-        installed = executable_version(yt_dlp)
-        if version_key(installed) <= version_key(previous):
-            raise SkillError("upgrade", f"yt-dlp version did not advance ({previous} -> {installed})")
-        outdated = version_key(installed) < version_key(latest)
-        upgraded = True
-    return {"ok": True, "command": "doctor", "yt_dlp": {
-        "executable": str(Path(yt_dlp).resolve()), "installed_version": installed,
+
+    if yt_dlp and installed:
+        manager, command = detect_ytdlp_manager(yt_dlp)
+        try:
+            latest = latest_ytdlp_version(min(timeout, 60))
+        except SkillError as exc:
+            if upgrade:
+                raise
+            warnings.append(f"无法检查 yt-dlp 最新版本：{exc}")
+        if latest:
+            outdated = version_key(installed) < version_key(latest)
+        if upgrade and outdated:
+            previous = installed
+            env = dict(os.environ)
+            if manager == "homebrew":
+                env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+            result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=timeout, env=env)
+            if result.returncode != 0:
+                raise SkillError("upgrade", error_summary(result))
+            installed = executable_version(yt_dlp)
+            if version_key(installed) <= version_key(previous):
+                raise SkillError("upgrade", f"yt-dlp version did not advance ({previous} -> {installed})")
+            outdated = version_key(installed) < version_key(latest)
+            upgraded = True
+
+    ready = not missing
+    next_action = dependency_install_guidance(missing) if missing else None
+    return {"ok": ready, "ready": ready, "command": "doctor",
+        "summary": "下载环境已准备完成。" if ready else f"下载环境尚未准备完成，缺少：{'、'.join(missing)}。",
+        "missing_dependencies": missing, "next_action": next_action, "yt_dlp": {
+        "installed": yt_dlp is not None,
+        "executable": str(Path(yt_dlp).resolve()) if yt_dlp else None, "installed_version": installed,
         "latest_stable_version": latest, "outdated": outdated, "manager": manager,
         "upgrade_requested": upgrade, "upgraded": upgraded},
-        "ffmpeg_version": optional_tool_version("ffmpeg"), "ffprobe_version": optional_tool_version("ffprobe"),
-        "wechat_channels": wechat_doctor()}
+        "ffmpeg_version": ffmpeg_version, "ffprobe_version": ffprobe_version,
+        "warnings": warnings, "wechat_channels": wechat_doctor()}
 
 
 def load_metadata_once(url: str, browser: str | None, timeout: int) -> dict[str, Any]:

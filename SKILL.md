@@ -1,6 +1,6 @@
 ---
 name: download-all
-description: 通用在线视频下载与媒体提取技能。用户表达“下载这个/保存这个/download this”等下载意图并附带 HTTPS URL 时，即使没有说“视频”，也用本技能探测并下载。内置微信视频号适配器和安全设置引导，并支持 YouTube、B站/Bilibili、X/Twitter、抖音/Douyin、TikTok、小红书/Xiaohongshu、Instagram、Facebook、Vimeo、Twitch、Reddit、微博、AcFun 等 yt-dlp extractor；也用于 MP3、字幕、媒体信息和 yt-dlp 更新。单独粘贴 URL 而没有下载意图时不自动下载。绝不使用 UI 自动化操作微信、小红书或风控验证页面。
+description: 通用在线视频下载与媒体提取技能。用户表达“下载这个/保存这个/download this”等下载意图并附带 HTTPS URL 时，即使没有说“视频”，也用本技能探测并下载；用户要求检查 downloadAll、下载环境或安装状态时也使用本技能自检。内置微信视频号适配器和安全设置引导，并支持 YouTube、B站/Bilibili、X/Twitter、抖音/Douyin、TikTok、小红书/Xiaohongshu、Instagram、Facebook、Vimeo、Twitch、Reddit、微博、AcFun 等 yt-dlp extractor；也用于 MP3、字幕、媒体信息和 yt-dlp 更新。单独粘贴 URL 而没有下载意图时不自动下载。绝不使用 UI 自动化操作微信、小红书或风控验证页面。
 version: 1.0.0
 ---
 
@@ -10,15 +10,16 @@ version: 1.0.0
 
 ## 工作流
 
-1. 用户表达下载或保存意图并附带 HTTPS URL 时触发；“下载这个：URL”已经足够。单独出现 URL、查看、总结、上传、图片/PDF/网页下载不触发。
-2. 先识别 URL：
+1. 用户要求检查 downloadAll、下载环境或安装状态时，运行 `python3 scripts/download.py doctor`。只有 `ready: true` 才报告准备完成；否则说明 `missing_dependencies` 并原样提供 `next_action`，不要让用户重复运行没有变化的自检。
+2. 用户表达下载或保存意图并附带 HTTPS URL 时触发；“下载这个：URL”已经足够。单独出现 URL、查看、总结、上传、图片/PDF/网页下载不触发。
+3. 先识别 URL：
    - `weixin.qq.com/sph/*`：直接使用内置视频号适配器，见“视频号流程”。
    - 其他 HTTPS URL：直接由 yt-dlp 动态探测，不在每个任务开始前升级或修改本机环境。
-3. 对小红书、抖音、TikTok、Instagram、Facebook、微博等容易触发登录验证或风控的平台，下载前简短提醒：“将只通过分享链接和 yt-dlp 解析，不操作客户端或网页 UI；若出现登录、验证码或安全验证，需要你手动完成。”提醒后直接继续。
-4. 普通视频运行 `python3 scripts/download.py download URL`；MP3、字幕、元数据分别使用 `audio`、`subtitles`、`info`。用户指定画质时加 `--quality 1080p|720p|480p`。
-5. 只有最终 JSON 中 `ok: true` 且 `files` 含经过验证的绝对路径时，才能报告完成。返回大小、时长、分辨率、编码和 Cookie 是否参与，不回显 Cookie 内容或签名媒体地址。
-6. 返回 `cookie_consent_required` 时，说明公开解析失败且尚未读取 Cookie，询问用户是否同意使用建议的浏览器；只有明确同意后才用 `--cookies-from-browser chrome|edge|firefox|safari` 重试一次。
-7. 只有 metadata/download 错误可能来自站点 extractor 变更时，才运行 `python3 scripts/download.py doctor`。检测到新版后说明安装来源，取得同意再运行 `doctor --upgrade`，随后最多重试一次。
+4. 对小红书、抖音、TikTok、Instagram、Facebook、微博等容易触发登录验证或风控的平台，下载前简短提醒：“将只通过分享链接和 yt-dlp 解析，不操作客户端或网页 UI；若出现登录、验证码或安全验证，需要你手动完成。”提醒后直接继续。
+5. 普通视频运行 `python3 scripts/download.py download URL`；MP3、字幕、元数据分别使用 `audio`、`subtitles`、`info`。用户指定画质时加 `--quality 1080p|720p|480p`。
+6. 只有最终 JSON 中 `ok: true` 且 `files` 含经过验证的绝对路径时，才能报告完成。返回大小、时长、分辨率、编码和 Cookie 是否参与，不回显 Cookie 内容或签名媒体地址。
+7. 返回 `cookie_consent_required` 时，说明公开解析失败且尚未读取 Cookie，询问用户是否同意使用建议的浏览器；只有明确同意后才用 `--cookies-from-browser chrome|edge|firefox|safari` 重试一次。
+8. 只有 metadata/download 错误可能来自站点 extractor 变更时，才运行 `python3 scripts/download.py doctor`。检测到新版后说明安装来源，取得同意再运行 `doctor --upgrade`，随后最多重试一次。
 
 ## 视频号流程
 

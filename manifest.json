@@ -1,0 +1,46 @@
+{
+  "name": "downloadAll",
+  "version": "1.0.0",
+  "owner": "loyalyonggang",
+  "updated_at": "2026-09-20",
+  "license": "MIT",
+  "entrypoint": "scripts/download.py",
+  "runtime": "python>=3.10",
+  "dependencies": [
+    "yt-dlp",
+    "ffmpeg",
+    "ffprobe",
+    "embedded WeChat Channels adapter",
+    "optional pinned wx_channels_download backend"
+  ],
+  "platforms": [
+    "wechat-channels",
+    "youtube",
+    "bilibili",
+    "x",
+    "douyin",
+    "tiktok",
+    "xiaohongshu",
+    "instagram",
+    "facebook",
+    "vimeo",
+    "twitch",
+    "reddit",
+    "weibo",
+    "acfun",
+    "generic-yt-dlp"
+  ],
+  "upstream_components": [
+    {
+      "name": "yt-dlp",
+      "source": "https://github.com/yt-dlp/yt-dlp",
+      "role": "general extractor runtime"
+    },
+    {
+      "name": "wx_channels_download",
+      "source": "https://github.com/ltaoo/wx_channels_download",
+      "role": "optional pinned local WeChat backend",
+      "license_note": "MIT with Commons Clause in pinned release"
+    }
+  ]
+}

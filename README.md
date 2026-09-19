@@ -28,14 +28,25 @@ python3 --version
 Codex：
 
 ```bash
-npx skills add loyalyonggang/downloadAll --skill download-all -g -a codex
+npx skills add \
+  loyalyonggang/downloadAll \
+  -g -a codex
 ```
 
-Claude Code 或 Cursor：
+Claude Code：
 
 ```bash
-npx skills add loyalyonggang/downloadAll --skill download-all -g -a claude-code
-npx skills add loyalyonggang/downloadAll --skill download-all -g -a cursor
+npx skills add \
+  loyalyonggang/downloadAll \
+  -g -a claude-code
+```
+
+Cursor：
+
+```bash
+npx skills add \
+  loyalyonggang/downloadAll \
+  -g -a cursor
 ```
 
 只运行与你使用的 Agent 对应的一条命令。`-g` 表示安装到当前用户，所有项目都可以使用。
